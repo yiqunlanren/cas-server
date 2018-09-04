@@ -1,0 +1,106 @@
+﻿一 jar包导入
+ojdbc6-11.0.0.jar  (oracle连接驱动)
+cas-server-support-jdbc-4.2.7.jar
+druid-1.0.18.jar
+
+二 设计数据库
+在oracle数据库中设计相应的数据库，包含password和username两个关键字
+
+
+
+三 相关配置（使用未加密形式）
+1 在\cas\WEB-INF\deployerConfigContext.xml中添加
+
+<!-- 数据源配置, 使用druid连接池 -->
+    <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource"
+          init-method="init" destroy-method="close">
+        <property name="driverClassName" value="${jdbc.driver}" />
+        <property name="url" value="${jdbc.url}" />
+        <property name="username" value="${jdbc.username}" />
+        <property name="password" value="${jdbc.password}" />
+        <!-- 配置初始化大小、最小、最大 -->
+        <property name="initialSize" value="${druid.initialSize}"/>
+        <property name="minIdle" value="${druid.minIdle}"/>
+        <property name="maxActive" value="${druid.maxActive}"/>
+
+        <!-- 配置获取连接等待超时的时间 -->
+        <property name="maxWait" value="${druid.maxWait}"/>
+        <!-- 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 -->
+        <property name="timeBetweenEvictionRunsMillis" value="${druid.timeBetweenEvictionRunsMillis}" />
+
+        <!-- 配置一个连接在池中最小生存的时间，单位是毫秒 -->
+        <property name="minEvictableIdleTimeMillis" value="${druid.minEvictableIdleTimeMillis}" />
+        <property name="validationQuery" value="${druid.validationQuery}" />
+        <property name="testWhileIdle" value="${druid.testWhileIdle}" />
+        <property name="testOnBorrow" value="${druid.testOnBorrow}" />
+        <property name="testOnReturn" value="${druid.testOnReturn}" />
+
+        <!-- 打开PSCache，并且指定每个连接上PSCache的大小  如果用Oracle，则把poolPreparedStatements配置为true，mysql可以配置为false。-->
+        <property name="poolPreparedStatements" value="${druid.poolPreparedStatements}" />
+        <property name="maxPoolPreparedStatementPerConnectionSize" value="${druid.maxPoolPreparedStatementPerConnectionSize}" />
+    </bean>
+	
+	
+找到相对应部分进行更改（可直接复制粘贴）
+
+  <bean id="attributeRepository" class="org.jasig.services.persondir.support.NamedStubPersonAttributeDao"
+          p:backingMap-ref="attrRepoBackingMap" />
+		  
+		  <!--默认方式，接受cas.properties中默认配置的密码，断开与数据库的连接
+    <alias name="acceptUsersAuthenticationHandler" alias="primaryAuthenticationHandler" />-->
+
+    <!--使用 MD5对密码进行加密，其中MD5加密在cas中默认为32为小写-->
+    <!--<bean id="MD5PasswordEncoder" class="org.jasig.cas.authentication.handler.DefaultPasswordEncoder" autowire="byName">
+        <constructor-arg  value="MD5"/>
+    </bean >
+    <bean id="queryDatabaseAuthenticationHandler" name="primaryAuthenticationHandler" class="org.jasig.cas.adaptors.jdbc.QueryDatabaseAuthenticationHandler">
+        <property name="passwordEncoder" ref="MD5PasswordEncoder"/>
+    </bean>-->
+
+    <!--****添加语句，不使用加密算法-->
+    <alias name="queryDatabaseAuthenticationHandler" alias="primaryAuthenticationHandler" />
+    <alias name="personDirectoryPrincipalResolver" alias="primaryPrincipalResolver" />
+	<!--****添加语句-->
+	<alias name="dataSource" alias="queryDatabaseDataSource" />
+	
+    <util:map id="attrRepoBackingMap">
+        <entry key="uid" value="uid" />
+        <entry key="eduPersonAffiliation" value="eduPersonAffiliation" />
+        <entry key="groupMembership" value="groupMembership" />
+        <entry>
+            <key><value>memberOf</value></key>
+            <list>
+                <value>faculty</value>
+                <value>staff</value>
+                <value>org</value>
+            </list>
+        </entry>
+    </util:map>
+	
+	
+2 在cas.properties中配置相应文件
+
+
+添加查询语句
+cas.jdbc.authn.query.sql=select password from test0 where username=?
+
+添加相应的参数
+
+jdbc.driver=oracle.jdbc.OracleDriver
+jdbc.url=jdbc:oracle:thin:@10.18.103.150:1521:orclcdr
+jdbc.username=zhangxinpan
+jdbc.password=zhangxp
+druid.initialSize=10
+druid.minIdle=10
+druid.maxActive=50
+druid.maxWait=60000
+druid.timeBetweenEvictionRunsMillis=60000
+druid.minEvictableIdleTimeMillis=300000
+druid.validationQuery=SELECT 1 from dual
+druid.testWhileIdle=true
+druid.testOnBorrow=false
+druid.testOnReturn=false
+druid.poolPreparedStatements=true
+druid.maxPoolPreparedStatementPerConnectionSize=20
+
+
